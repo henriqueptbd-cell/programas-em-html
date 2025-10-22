@@ -1,0 +1,1034 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Snake Puzzle — Pro</title>
+  <style>
+    :root{
+      --bg:#0e0f13; --panel:#151823; --ink:#e8ecf1; --muted:#a6b0c3; --accent:#6de17a;
+      --b1:#1b2135; --b2:#2a3559; --grid:#0f1427; --gridB:#171d33; --wall:#2c3147; --wallB:#343a57;
+      --door:#7d55cc; --doorB:#8c6be0; --key:#e3b341; --keyB:#f1cc6d; --exit:#ffd166;
+      --snake:#93f5a2; --snakeHead:#6de17a;
+      --button:#ff6b6b; --buttonB:#ff5252; --teleport:#4ecdc4; --stone:#95a5a6;
+      --enemy:#e74c3c; --grow:#2ecc71; --shrink:#e67e22;
+    }
+    *{box-sizing:border-box}
+    body{margin:0; background:var(--bg); color:var(--ink); font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif;}
+    .wrap{max-width:780px; margin:0 auto; padding:16px; display:grid; gap:12px}
+    header{display:flex; align-items:center; justify-content:space-between}
+    h1{margin:0; font-size:18px}
+    .badge{padding:4px 10px; border-radius:999px; background:#1a2034; border:1px solid var(--b2); font-size:12px; color:#cfe7ff}
+    .panel{background:var(--panel); border:1px solid #21263a; border-radius:14px; padding:12px}
+    .topbar{display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px}
+    .title{font-weight:700}
+    .level{opacity:.9}
+
+    #display{width:100%; aspect-ratio:1/1; background:radial-gradient(120% 120% at 100% 100%, #0e1222 0%, #0b0f1e 40%, #0b0f1e 100%); border:1px solid #1c2033; border-radius:14px; position:relative; overflow:hidden}
+
+    /* Board (grid de DIVs) */
+    .board{position:absolute; inset:0; display:grid; gap:2px; padding:8px}
+    .cell{border-radius:8px; display:grid; place-items:center; font-size:12px; user-select:none; position:relative}
+    .floor{background:var(--grid); border:1px solid var(--gridB)}
+    .wall{background:var(--wall); border:1px solid var(--wallB)}
+    .door{background:var(--door); border:1px solid var(--doorB)}
+    .key{background:var(--key); border:1px solid var(--keyB)}
+    .exit{background:var(--exit); color:#1a1f33; font-weight:800}
+    .button{background:var(--button); border:1px solid var(--buttonB)}
+    .teleport{background:var(--teleport); border:1px solid var(--teleport)}
+    .stone{background:var(--stone); border:1px solid var(--stone)}
+    .enemy{background:var(--enemy); border:1px solid var(--enemy)}
+    .grow{background:var(--grow); border:1px solid var(--grow)}
+    .shrink{background:var(--shrink); border:1px solid var(--shrink)}
+
+    /* Camada da cobra */
+    .snake-layer{position:absolute; inset:8px; pointer-events:none}
+    .seg{position:absolute; border-radius:6px; background:var(--snake); transition:left 120ms linear, top 120ms linear}
+    .head{background:var(--snakeHead)}
+    .no-anim .seg{transition:none !important}
+
+    /* 🔽 BOTÕES MAIORES E MELHORADOS 🔽 */
+    .controls{display:grid; grid-template-columns:repeat(3,1fr); gap:12px; place-items:center; max-width:400px; margin:20px auto 0}
+    .control-btn{appearance:none; border:none; border-radius:16px; background:var(--b1); color:var(--ink); padding:20px; font-weight:700; cursor:pointer; border:2px solid var(--b2); transition:all 0.2s; font-size:24px; min-width:80px; min-height:80px; display:grid; place-items:center}
+    .control-btn:hover{background:var(--b2); transform:translateY(-2px)}
+    .control-btn:active{transform:translateY(1px); background:var(--accent); color:var(--bg)}
+    .control-btn.arrow{font-size:32px; background:linear-gradient(145deg, #1b2135, #161b2d); box-shadow:0 4px 8px rgba(0,0,0,0.3)}
+    
+    .action-buttons{display:flex; gap:12px; justify-content:center; margin-top:16px}
+    .action-btn{padding:14px 24px; font-size:16px; border-radius:12px; background:var(--b1); border:2px solid var(--b2); color:var(--ink); cursor:pointer; transition:all 0.2s; font-weight:600}
+    .action-btn:hover{background:var(--b2); transform:translateY(-2px)}
+    .action-btn:active{transform:translateY(1px)}
+    .action-btn.reset{background:#e74c3c; border-color:#c0392b}
+    .action-btn.undo{background:#3498db; border-color:#2980b9}
+
+    .ghost{visibility:hidden}
+
+    .hint{opacity:.75; font-size:12px; text-align:center; margin-top:8px}
+
+    /* Novos estilos */
+    .stars{display:flex; gap:4px; margin-left:12px}
+    .star{color:#444; font-size:16px}
+    .star.filled{color:#ffd166}
+    
+    .particle{position:absolute; pointer-events:none; z-index:100}
+    
+    .stats-grid{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px}
+    .stat{background:#1a2034; padding:8px; border-radius:8px; text-align:center; font-size:12px}
+    .stat-value{font-weight:700; color:var(--accent)}
+    
+    .achievement-popup{position:fixed; top:20px; right:20px; background:var(--panel); border:1px solid var(--accent); border-radius:12px; padding:12px; max-width:300px; z-index:1000; animation:slideIn 0.3s ease-out}
+    
+    /* 🔽 TUTORIAL E LEGENDA 🔽 */
+    .legend{display:grid; grid-template-columns:repeat(auto-fit, minmax(120px, 1fr)); gap:8px; margin:16px 0; padding:12px; background:#1a2034; border-radius:12px; border:1px solid #2a3559}
+    .legend-item{display:flex; align-items:center; gap:8px; font-size:11px}
+    .legend-color{width:16px; height:16px; border-radius:4px; border:1px solid}
+    .tutorial{background:linear-gradient(145deg, #1a2034, #151928); border:2px solid var(--accent); border-radius:12px; padding:16px; margin:16px 0; position:relative}
+    .tutorial::before{content:"💡 Dica"; position:absolute; top:-10px; left:16px; background:var(--accent); color:var(--bg); padding:4px 12px; border-radius:8px; font-size:11px; font-weight:700}
+    .tutorial-content{font-size:13px; line-height:1.4}
+    
+    .level-objective{background:linear-gradient(145deg, #2a3559, #1b2135); border-radius:10px; padding:12px; margin:12px 0; border-left:4px solid var(--accent)}
+    .objective-title{font-weight:700; color:var(--accent); margin-bottom:4px; font-size:14px}
+    .objective-steps{font-size:12px; opacity:0.9}
+
+    @keyframes slideIn{from{transform:translateX(100%); opacity:0} to{transform:translateX(0); opacity:1}}
+    @keyframes collect{0%{transform:scale(1)} 50%{transform:scale(1.3)} 100%{transform:scale(0)}}
+    @keyframes pulse{0%,100%{opacity:1} 50%{opacity:0.5}}
+    @keyframes bounce{0%,100%{transform:translateY(0)} 50%{transform:translateY(-5px)}}
+    
+    .collecting{animation:collect 0.3s ease-out}
+    .pulsing{animation:pulse 1s infinite}
+    .bouncing{animation:bounce 0.6s infinite}
+    
+    .mode-selector{display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap}
+    .mode-btn{padding:8px 16px; border-radius:10px; background:var(--b1); border:2px solid var(--b2); cursor:pointer; font-size:12px; font-weight:600; transition:all 0.2s}
+    .mode-btn.active{background:var(--accent); color:var(--bg); border-color:var(--accent)}
+    .mode-btn:hover{transform:translateY(-1px)}
+
+    /* 🔽 DESTAQUE VISUAL PARA OBJETIVOS 🔽 */
+    .objective-highlight{position:relative; z-index:10}
+    .objective-highlight::after{content:""; position:absolute; inset:-2px; border:2px solid var(--accent); border-radius:10px; animation:pulse 2s infinite}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Snake Puzzle — Pro</h1>
+      <span class="badge">v6.1</span>
+    </header>
+    
+    <section class="panel">
+      <!-- 🔽 LEGENDA VISUAL 🔽 -->
+      <div class="legend">
+        <div class="legend-item">
+          <div class="legend-color" style="background:var(--snakeHead)"></div>
+          <span>Cabeça da Cobra</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color" style="background:var(--key)"></div>
+          <span>Chave</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color" style="background:var(--door)"></div>
+          <span>Porta</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color" style="background:var(--exit)"></div>
+          <span>Saída</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color" style="background:var(--button)"></div>
+          <span>Botão</span>
+        </div>
+      </div>
+
+      <!-- 🔽 OBJETIVO DO NÍVEL 🔽 -->
+      <div class="level-objective" id="levelObjective">
+        <div class="objective-title">🎯 OBJETIVO ATUAL:</div>
+        <div class="objective-steps" id="objectiveSteps">Carregando...</div>
+      </div>
+
+      <div class="mode-selector">
+        <button class="mode-btn active" data-mode="classic">🎮 Clássico</button>
+        <button class="mode-btn" data-mode="timed">⏰ Contra-Relógio</button>
+        <button class="mode-btn" data-mode="limited">🎯 Movimentos Limitados</button>
+      </div>
+      
+      <div class="topbar">
+        <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap">
+          <div class="action-buttons">
+            <button class="action-btn reset" id="btnReset">🔄 Reiniciar</button>
+            <button class="action-btn undo" id="btnUndo">↩️ Desfazer</button>
+          </div>
+          <span class="title">Snake Puzzle Pro</span>
+          <div class="stars" id="starsContainer"></div>
+        </div>
+        <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap">
+          <label class="level" for="levelSelect">Nível:</label>
+          <select id="levelSelect" style="background:#1b2135; color:#e8ecf1; border:1px solid #2a3559; border-radius:8px; padding:6px 8px;"></select>
+          <span class="level">Passos: <strong id="steps">0</strong></span>
+          <span class="level" id="timer">00:00</span>
+          <span class="level" id="movesLeft"></span>
+        </div>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat">Melhor: <span class="stat-value" id="bestMoves">-</span></div>
+        <div class="stat">Estrelas: <span class="stat-value" id="totalStars">0</span></div>
+      </div>
+
+      <div id="display" aria-label="Área do jogo"></div>
+
+      <!-- 🔽 CONTROLES MAIORES E MELHORADOS 🔽 -->
+      <div class="controls">
+        <span class="ghost"></span>
+        <button class="control-btn arrow" data-dir="up" title="Mover para Cima">▲</button>
+        <span class="ghost"></span>
+        <button class="control-btn arrow" data-dir="left" title="Mover para Esquerda">◀</button>
+        <button class="control-btn arrow" data-dir="down" title="Mover para Baixo">▼</button>
+        <button class="control-btn arrow" data-dir="right" title="Mover para Direita">▶</button>
+      </div>
+
+      <!-- 🔽 TUTORIAL CONTEXTUAL 🔽 -->
+      <div class="tutorial" id="currentTutorial">
+        <div class="tutorial-content" id="tutorialContent">
+          Use as setas para mover a cobra. Colete a chave amarela para abrir as portas roxas e chegue na saída laranja!
+        </div>
+      </div>
+    </section>
+
+    <p class="hint">Controles: Setas grandes acima ↑ ou teclado (WASD/setas) ou arrastar na tela. Desfazer: botão ↩️ ou Ctrl+Z</p>
+  </div>
+
+  <script>
+  // =============================================================
+  // Snake Puzzle – v6.1 (BOTÕES MELHORADOS + TUTORIAL)
+  // =============================================================
+
+  // 🔽 SISTEMA DE TUTORIAL 🔽
+  const TutorialSystem = {
+    currentTip: 0,
+    
+    tips: [
+      "Use as setas para mover a cobra. Colete a chave amarela 🗝️ para abrir as portas roxas 🚪 e chegue na saída laranja 🎯!",
+      "Dica: Planeje seus movimentos! A cobra não pode passar por cima de si mesma (exceto pela cauda que está saindo).",
+      "Botões vermelhos 🔴 abrem todas as portas temporariamente. Use isso para criar novos caminhos!",
+      "Comida verde 🟢 faz a cobra crescer. Comida laranja 🟠 faz a cobra diminuir. Cuidado com o tamanho!",
+      "No modo Contra-Relógio ⏰, você precisa ser rápido! No modo Movimentos Limitados 🎯, cada movimento conta!"
+    ],
+    
+    showTip: (tipIndex) => {
+      const tutorial = document.getElementById('tutorialContent');
+      if (tutorial && TutorialSystem.tips[tipIndex]) {
+        tutorial.textContent = TutorialSystem.tips[tipIndex];
+        TutorialSystem.currentTip = tipIndex;
+      }
+    },
+    
+    showLevelTip: (levelIndex) => {
+      const levelTips = {
+        0: "Primeiro, colete a chave amarela no topo, depois volte para abrir a porta e chegar na saída!",
+        1: "Este labirinto tem múltiplos caminhos. Encontre a rota mais eficiente para a chave!",
+        2: "Use o botão vermelho para abrir a porta no centro. Estratégia é a chave aqui!",
+        3: "Cresça com a comida verde para alcançar novos lugares, mas cuidado para não ficar muito grande!"
+      };
+      
+      const tutorial = document.getElementById('tutorialContent');
+      if (tutorial && levelTips[levelIndex]) {
+        tutorial.textContent = levelTips[levelIndex];
+      }
+    },
+    
+    updateObjective: (levelIndex, hasKey) => {
+      const objective = document.getElementById('objectiveSteps');
+      if (!objective) return;
+      
+      const objectives = {
+        0: hasKey ? 
+          "✅ Chave coletada! Agora vá até a saída laranja passando pela porta aberta!" : 
+          "1. Colete a chave amarela 🗝️\n2. Volte para abrir a porta roxa\n3. Chegue na saída laranja 🎯",
+        
+        1: hasKey ?
+          "✅ Chave coletada! Encontre o caminho para a saída no labirinto!" :
+          "1. Navegue pelo labirinto para encontrar a chave\n2. Volte pela rota mais eficiente\n3. Chegue na saída",
+        
+        2: hasKey ?
+          "✅ Chave coletada! Use o botão se precisar abrir mais portas!" :
+          "1. Colete a chave no centro\n2. Use o botão vermelho para abrir portas\n3. Encontre a saída no topo",
+        
+        3: hasKey ?
+          "✅ Chave coletada! Use o crescimento estratégico para chegar na saída!" :
+          "1. Use a comida verde para crescer quando necessário\n2. Colete a chave\n3. Chegue na saída"
+      };
+      
+      objective.textContent = objectives[levelIndex] || "Complete o nível!";
+    },
+    
+    highlightObjectives: (levelIndex) => {
+      // Remove destaque anterior
+      document.querySelectorAll('.objective-highlight').forEach(el => {
+        el.classList.remove('objective-highlight');
+      });
+      
+      // Adiciona destaque aos objetivos importantes
+      setTimeout(() => {
+        const objectives = {
+          0: ['.key', '.door', '.exit'],
+          1: ['.key', '.exit'],
+          2: ['.key', '.button', '.exit'],
+          3: ['.grow', '.key', '.exit']
+        };
+        
+        const selectors = objectives[levelIndex] || ['.key', '.exit'];
+        selectors.forEach(selector => {
+          document.querySelectorAll(selector).forEach(el => {
+            el.classList.add('objective-highlight');
+          });
+        });
+      }, 1000);
+    }
+  };
+
+  // 🔽 CONFIGURAÇÕES GLOBAIS 🔽
+  const CONFIG = {
+    modes: {
+      classic: { name: 'Clássico', timeLimit: null, moveLimit: null },
+      timed: { name: 'Contra-Relógio', timeLimit: 120, moveLimit: null },
+      limited: { name: 'Movimentos Limitados', timeLimit: null, moveLimit: 30 }
+    }
+  };
+
+  // 🔽 SISTEMA DE SONS (simulado) 🔽
+  const SoundSystem = {
+    play: (name) => {
+      console.log(`🔊 Playing: ${name}`);
+      // Na implementação real, usaríamos Audio objects
+    }
+  };
+
+  // 🔽 SISTEMA DE PARTÍCULAS 🔽
+  const ParticleSystem = {
+    create: (x, y, color, count = 5) => {
+      const display = document.getElementById('display');
+      for (let i = 0; i < count; i++) {
+        const particle = document.createElement('div');
+        particle.className = 'particle';
+        particle.style.cssText = `
+          width: 4px; height: 4px; background: ${color}; border-radius: 50%;
+          left: ${x}px; top: ${y}px; position: absolute;
+          animation: moveParticle 0.6s ease-out forwards;
+        `;
+        
+        const angle = Math.random() * Math.PI * 2;
+        const distance = 20 + Math.random() * 30;
+        const dx = Math.cos(angle) * distance;
+        const dy = Math.sin(angle) * distance;
+        
+        particle.style.setProperty('--dx', dx + 'px');
+        particle.style.setProperty('--dy', dy + 'px');
+        
+        display.appendChild(particle);
+        setTimeout(() => particle.remove(), 600);
+      }
+    }
+  };
+
+  // Adicionar keyframe para partículas
+  const style = document.createElement('style');
+  style.textContent = `
+    @keyframes moveParticle {
+      to {
+        transform: translate(var(--dx), var(--dy));
+        opacity: 0;
+      }
+    }
+  `;
+  document.head.appendChild(style);
+
+  // 🔽 ACHIEVEMENTS 🔽
+  const ACHIEVEMENTS = [
+    { id: 'first_blood', name: 'Primeira Vitória', desc: 'Complete o nível 1', earned: false },
+    { id: 'perfectionist', name: 'Perfeccionista', desc: '3 estrelas em 3 níveis', earned: false },
+    { id: 'speedrunner', name: 'Speedrunner', desc: 'Complete um nível em < 60s', earned: false },
+    { id: 'undo_meister', name: 'Mestre do Undo', desc: 'Complete sem usar undo', earned: false },
+    { id: 'collector', name: 'Colecionador', desc: 'Colete 5 chaves', earned: false }
+  ];
+
+  // 🔽 SISTEMA DE SAVE 🔽
+  const SaveSystem = {
+    key: 'snakePuzzlePro',
+    
+    load: () => {
+      try {
+        return JSON.parse(localStorage.getItem(SaveSystem.key)) || {
+          currentLevel: 0,
+          scores: [],
+          bestMoves: [],
+          totalTime: 0,
+          achievements: ACHIEVEMENTS,
+          keysCollected: 0,
+          gamesCompleted: 0
+        };
+      } catch {
+        return {
+          currentLevel: 0,
+          scores: [],
+          bestMoves: [],
+          totalTime: 0,
+          achievements: JSON.parse(JSON.stringify(ACHIEVEMENTS)),
+          keysCollected: 0,
+          gamesCompleted: 0
+        };
+      }
+    },
+    
+    save: (data) => {
+      localStorage.setItem(SaveSystem.key, JSON.stringify(data));
+    },
+    
+    updateLevelScore: (levelIndex, stars, moves, time) => {
+      const save = SaveSystem.load();
+      
+      // Atualizar estrelas
+      if (!save.scores[levelIndex] || stars > save.scores[levelIndex]) {
+        save.scores[levelIndex] = stars;
+      }
+      
+      // Atualizar melhores movimentos
+      if (!save.bestMoves[levelIndex] || moves < save.bestMoves[levelIndex]) {
+        save.bestMoves[levelIndex] = moves;
+      }
+      
+      save.totalTime += time;
+      SaveSystem.save(save);
+      return save;
+    },
+    
+    unlockAchievement: (achievementId) => {
+      const save = SaveSystem.load();
+      const achievement = save.achievements.find(a => a.id === achievementId);
+      if (achievement && !achievement.earned) {
+        achievement.earned = true;
+        achievement.unlockedAt = new Date().toISOString();
+        SaveSystem.save(save);
+        AchievementSystem.show(achievement);
+        return true;
+      }
+      return false;
+    }
+  };
+
+  // 🔽 SISTEMA DE ACHIEVEMENTS 🔽
+  const AchievementSystem = {
+    show: (achievement) => {
+      const popup = document.createElement('div');
+      popup.className = 'achievement-popup';
+      popup.innerHTML = `
+        <div style="font-weight:700; color:var(--accent); margin-bottom:4px;">🏆 Conquista Desbloqueada!</div>
+        <div style="font-weight:700;">${achievement.name}</div>
+        <div style="font-size:11px; opacity:0.8;">${achievement.desc}</div>
+      `;
+      document.body.appendChild(popup);
+      
+      setTimeout(() => {
+        popup.style.animation = 'slideIn 0.3s ease-out reverse';
+        setTimeout(() => popup.remove(), 300);
+      }, 3000);
+    }
+  };
+
+  // 🔽 NÍVEIS EXPANDIDOS 🔽
+  const level1 = {
+    name: 'Nível 1 - Tutorial', w: 12, h: 12,
+    par: 15,
+    tiles: [
+      '############',
+      '#..K.......#',
+      '#.####.....#',
+      '#....#.....#',
+      '#....#..E..#',
+      '#....#.....#',
+      '#....####..#',
+      '#..........#',
+      '#..D.......#',
+      '#..........#',
+      '#S.........#',
+      '############',
+    ],
+    snakeStart: [ {x:1,y:10},{x:2,y:10},{x:3,y:10},{x:4,y:10} ]
+  };
+
+  const level2 = {
+    name: 'Nível 2 - Labirinto', w: 12, h: 12,
+    par: 25,
+    tiles: [
+      '############',
+      '#..K...#...#',
+      '#.###..#.#.#',
+      '#...#..#.#.#',
+      '#.D.#..#.#.#',
+      '#...#..#.#.#',
+      '#.###..#.#.#',
+      '#.....E#.#.#',
+      '###.#####.#.',
+      '#..........#',
+      '#S.........#',
+      '############',
+    ],
+    snakeStart: [ {x:1,y:10},{x:2,y:10},{x:3,y:10},{x:4,y:10} ]
+  };
+
+  const level3 = {
+    name: 'Nível 3 - Botões', w: 14, h: 14,
+    par: 35,
+    tiles: [
+      '##############',
+      '#....B....E..#',
+      '#.####.#####.#',
+      '#.#........#.#',
+      '#.#.######.#.#',
+      '#.#.#....#.#.#',
+      '#.#.#.##.#.#.#',
+      '#K#.#.D.#.#.#',
+      '#.#.#.##.#.#.#',
+      '#.#.#....#.#.#',
+      '#.#.######.#.#',
+      '#.#........#.#',
+      '#S..........#',
+      '##############',
+    ],
+    snakeStart: [ {x:1,y:12}, {x:2,y:12}, {x:3,y:12}, {x:4,y:12}, {x:5,y:12} ]
+  };
+
+  const level4 = {
+    name: 'Nível 4 - Crescimento', w: 12, h: 12,
+    par: 30,
+    tiles: [
+      '############',
+      '#..G....E..#',
+      '#.####.....#',
+      '#....#.....#',
+      '#....#.....#',
+      '#....#.....#',
+      '#....####..#',
+      '#..........#',
+      '#..K....D..#',
+      '#..........#',
+      '#S.........#',
+      '############',
+    ],
+    snakeStart: [ {x:1,y:10},{x:2,y:10},{x:3,y:10} ]
+  };
+
+  const levels = [level1, level2, level3, level4];
+
+  // 🔽 VARIÁVEIS GLOBAIS DO JOGO 🔽
+  let currentLevel = 0;
+  let level, tiles, snake, haveKey, steps, keysCollected = 0;
+  let undoStack = [];
+  let gameMode = 'classic';
+  let gameStartTime = 0;
+  let timerInterval = null;
+  let movesLeft = 0;
+  let currentStars = 0;
+  let usedUndo = false;
+
+  // 🔽 SISTEMA DE ESTRELAS 🔽
+  const StarSystem = {
+    calculate: (moves, par, time, usedUndo) => {
+      let stars = 1; // Estrela base por completar
+      
+      // Estrela por eficiência de movimentos
+      if (moves <= par) stars++;
+      
+      // Estrela por não usar undo
+      if (!usedUndo) stars++;
+      
+      // Estrela por velocidade (apenas no modo contra-relógio)
+      if (time < 60) stars++;
+      
+      return Math.min(stars, 4); // Máximo de 4 estrelas
+    },
+    
+    display: (container, stars) => {
+      container.innerHTML = '';
+      for (let i = 0; i < 4; i++) {
+        const star = document.createElement('span');
+        star.className = `star ${i < stars ? 'filled' : ''}`;
+        star.textContent = '★';
+        container.appendChild(star);
+      }
+    }
+  };
+
+  // 🔽 FUNÇÕES DO JOGO 🔽
+  function snapshot(){
+    return {
+      tiles: tiles.map(row => row.join('')).join('\n'),
+      snake: JSON.parse(JSON.stringify(snake)),
+      haveKey,
+      steps,
+      keysCollected
+    };
+  }
+
+  function restore(snap){
+    tiles = snap.tiles.split('\n').map(r => r.split(''));
+    snake = JSON.parse(JSON.stringify(snap.snake));
+    haveKey = snap.haveKey;
+    steps = snap.steps;
+    keysCollected = snap.keysCollected;
+    initBoard();
+    render();
+    updateHUD();
+    TutorialSystem.updateObjective(currentLevel, haveKey);
+  }
+
+  function doUndo() {
+    if (undoStack.length > 0) {
+      usedUndo = true;
+      const snap = undoStack.pop();
+      restore(snap);
+      SoundSystem.play('undo');
+    }
+  }
+
+  // 🔽 INICIALIZAÇÃO DO TABULEIRO 🔽
+  const display = document.getElementById('display');
+  const stepsEl = document.getElementById('steps');
+  const timerEl = document.getElementById('timer');
+  const movesLeftEl = document.getElementById('movesLeft');
+  const bestMovesEl = document.getElementById('bestMoves');
+  const totalStarsEl = document.getElementById('totalStars');
+  const starsContainer = document.getElementById('starsContainer');
+  
+  let boardEl, snakeLayerEl, cellSize = 0;
+
+  function updateHUD(){ 
+    if(stepsEl) stepsEl.textContent = String(steps);
+    
+    // Atualizar contador de movimentos restantes
+    if (gameMode === 'limited' && movesLeftEl) {
+      movesLeftEl.textContent = `${movesLeft} restantes`;
+      movesLeftEl.style.color = movesLeft < 10 ? '#ff6b6b' : '#e8ecf1';
+    }
+    
+    // Atualizar melhor pontuação
+    const save = SaveSystem.load();
+    if (bestMovesEl && save.bestMoves[currentLevel]) {
+      bestMovesEl.textContent = save.bestMoves[currentLevel];
+    }
+    
+    // Atualizar total de estrelas
+    if (totalStarsEl) {
+      const total = save.scores.reduce((sum, score) => sum + (score || 0), 0);
+      totalStarsEl.textContent = total;
+    }
+  }
+
+  function initBoard(){
+    const w = level.w, h = level.h;
+    display.innerHTML = '';
+
+    boardEl = document.createElement('div');
+    boardEl.className = 'board';
+    boardEl.style.gridTemplateColumns = `repeat(${w}, 1fr)`;
+    boardEl.style.gridTemplateRows = `repeat(${h}, 1fr)`;
+    display.appendChild(boardEl);
+
+    snakeLayerEl = document.createElement('div');
+    snakeLayerEl.className = 'snake-layer';
+    display.appendChild(snakeLayerEl);
+
+    for(let y=0;y<h;y++){
+      for(let x=0;x<w;x++){
+        const ch = tiles[y][x];
+        const c = document.createElement('div');
+        c.className = 'cell ' + tileClass(ch);
+        c.setAttribute('data-pos', `${x},${y}`);
+        boardEl.appendChild(c);
+        
+        // Adicionar ícones/legendas
+        if(ch==='E') c.textContent = '🚪';
+        if(ch==='B') c.textContent = '🔴';
+        if(ch==='G') c.textContent = '🟢';
+        if(ch==='S') c.textContent = '🟠';
+        if(ch==='K') c.textContent = '🗝️';
+      }
+    }
+
+    const rect = display.getBoundingClientRect();
+    const inner = rect.width - 16;
+    cellSize = (inner - (level.w-1)*2) / level.w;
+
+    snakeLayerEl.classList.add('no-anim');
+    requestAnimationFrame(()=> snakeLayerEl.classList.remove('no-anim'));
+
+    renderSnake();
+    updateHUD();
+    StarSystem.display(starsContainer, currentStars);
+    
+    // 🔽 ATUALIZAR TUTORIAL E OBJETIVOS 🔽
+    TutorialSystem.showLevelTip(currentLevel);
+    TutorialSystem.updateObjective(currentLevel, haveKey);
+    TutorialSystem.highlightObjectives(currentLevel);
+  }
+
+  function tileClass(ch){
+    switch(ch){
+      case '#': return 'wall';
+      case 'D': return 'door';
+      case 'K': return 'key';
+      case 'E': return 'exit';
+      case 'B': return 'button';
+      case 'T': return 'teleport';
+      case 'P': return 'stone';
+      case 'I': return 'enemy';
+      case 'G': return 'grow';
+      case 'S': return 'shrink';
+      default: return 'floor';
+    }
+  }
+
+  function renderSnake(){
+    snakeLayerEl.innerHTML = '';
+    for(let i=0;i<snake.length;i++){
+      const seg = document.createElement('div');
+      seg.className = 'seg' + (i===snake.length-1 ? ' head' : '');
+      const {x,y} = snake[i];
+      seg.style.left = (x * (cellSize+2)) + 'px';
+      seg.style.top  = (y * (cellSize+2)) + 'px';
+      seg.style.width  = cellSize + 'px';
+      seg.style.height = cellSize + 'px';
+      snakeLayerEl.appendChild(seg);
+    }
+  }
+
+  function render(){ renderSnake(); }
+
+  // 🔽 SISTEMA DE TEMPO 🔽
+  function startTimer() {
+    gameStartTime = Date.now();
+    if (timerInterval) clearInterval(timerInterval);
+    
+    timerInterval = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - gameStartTime) / 1000);
+      const minutes = Math.floor(elapsed / 60);
+      const seconds = elapsed % 60;
+      timerEl.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+      
+      // Modo contra-relógio
+      if (gameMode === 'timed') {
+        const timeLeft = CONFIG.modes.timed.timeLimit - elapsed;
+        if (timeLeft <= 0) {
+          gameOver('time');
+        } else {
+          const minLeft = Math.floor(timeLeft / 60);
+          const secLeft = timeLeft % 60;
+          timerEl.textContent = `${minLeft}:${secLeft.toString().padStart(2, '0')}`;
+          timerEl.style.color = timeLeft < 30 ? '#ff6b6b' : '#e8ecf1';
+        }
+      }
+    }, 1000);
+  }
+
+  function stopTimer() {
+    if (timerInterval) {
+      clearInterval(timerInterval);
+      timerInterval = null;
+    }
+  }
+
+  function getElapsedTime() {
+    return Math.floor((Date.now() - gameStartTime) / 1000);
+  }
+
+  // 🔽 CONTROLES E INPUT 🔽
+  const arrows = document.querySelectorAll('.arrow');
+  arrows.forEach(btn=>btn.addEventListener('click', ()=> move(btn.dataset.dir)));
+
+  window.addEventListener('keydown', (e)=>{
+    const k = e.key.toLowerCase();
+    if(k==='arrowup'||k==='w') move('up');
+    if(k==='arrowdown'||k==='s') move('down');
+    if(k==='arrowleft'||k==='a') move('left');
+    if(k==='arrowright'||k==='d') move('right');
+    if((e.ctrlKey||e.metaKey) && k==='z'){ e.preventDefault(); doUndo(); }
+  });
+
+  // Swipe
+  let touchStartX = 0, touchStartY = 0, touchActive = false;
+  display.addEventListener('touchstart', (ev)=>{
+    const t = ev.touches[0];
+    touchStartX = t.clientX; touchStartY = t.clientY; touchActive = true;
+  }, {passive:true});
+  display.addEventListener('touchend', (ev)=>{
+    if(!touchActive) return; touchActive = false;
+    const t = ev.changedTouches[0];
+    const dx = t.clientX - touchStartX; const dy = t.clientY - touchStartY;
+    const ax = Math.abs(dx), ay = Math.abs(dy); if(Math.max(ax,ay) < 24) return;
+    if(ax > ay) move(dx>0 ? 'right':'left'); else move(dy>0 ? 'down':'up');
+  }, {passive:true});
+
+  // 🔽 LÓGICA DO JOGO 🔽
+  const DIRS = { up:{x:0,y:-1}, down:{x:0,y:1}, left:{x:-1,y:0}, right:{x:1,y:0} };
+  function inBounds(x,y){ return x>=0 && y>=0 && x<level.w && y<level.h; }
+
+  const STEP_MS = 140; let isAnimating = false;
+
+  function move(dir){
+    if(isAnimating) return;
+    
+    const d = DIRS[dir]; 
+    if(!d) return;
+
+    const head = snake[snake.length-1];
+    const nx = head.x + d.x; 
+    const ny = head.y + d.y;
+
+    if(!inBounds(nx,ny)) return;
+    const cell = tiles[ny][nx];
+    if(cell === '#') return;
+    if(cell === 'D' && !haveKey) return;
+
+    // Verificar colisão com corpo
+    const tail = snake[0];
+    const hitsBody = snake.some((seg,i)=> seg.x===nx && seg.y===ny && !(seg.x===tail.x && seg.y===tail.y && i===0));
+    if(hitsBody) return;
+
+    // Verificar limites de movimento
+    if (gameMode === 'limited' && movesLeft <= 0) {
+      gameOver('moves');
+      return;
+    }
+
+    // Salvar estado para undo
+    undoStack.push(snapshot());
+
+    // Aplicar movimento
+    snake.push({x:nx,y:ny});
+
+    // Processar células especiais
+    processCell(nx, ny, cell);
+
+    // Não cresce: remove cauda (a menos que seja crescimento)
+    if (cell !== 'G') {
+      snake.shift();
+    }
+
+    steps++; 
+    if (gameMode === 'limited') {
+      movesLeft--;
+    }
+    
+    updateHUD();
+    TutorialSystem.updateObjective(currentLevel, haveKey);
+
+    // Animação
+    isAnimating = true; 
+    setTimeout(()=>{ isAnimating = false; }, STEP_MS);
+
+    if(cell === 'E'){ 
+      win(); 
+      return; 
+    }
+
+    render();
+  }
+
+  function processCell(x, y, cell) {
+    const rect = display.getBoundingClientRect();
+    const cellRect = {
+      x: rect.left + 8 + x * (cellSize + 2) + cellSize / 2,
+      y: rect.top + 8 + y * (cellSize + 2) + cellSize / 2
+    };
+
+    switch(cell) {
+      case 'K':
+        haveKey = true;
+        keysCollected++;
+        tiles[y][x] = '.';
+        initBoard();
+        ParticleSystem.create(cellRect.x, cellRect.y, '#e3b341');
+        SoundSystem.play('collect');
+        
+        // Achievement de colecionador
+        if (keysCollected >= 5) {
+          SaveSystem.unlockAchievement('collector');
+        }
+        break;
+        
+      case 'B': // Botão
+        // Abrir todas as portas temporariamente
+        for(let y=0;y<level.h;y++) {
+          for(let x=0;x<level.w;x++) {
+            if(tiles[y][x]==='D') tiles[y][x]='.';
+          }
+        }
+        initBoard();
+        ParticleSystem.create(cellRect.x, cellRect.y, '#ff6b6b');
+        SoundSystem.play('button');
+        break;
+        
+      case 'G': // Crescer
+        // A cobra já ganhou um segmento (não removeu a cauda)
+        ParticleSystem.create(cellRect.x, cellRect.y, '#2ecc71');
+        SoundSystem.play('grow');
+        break;
+        
+      case 'S': // Diminuir
+        if (snake.length > 2) {
+          snake.shift(); // Remove um segmento extra
+        }
+        ParticleSystem.create(cellRect.x, cellRect.y, '#e67e22');
+        SoundSystem.play('shrink');
+        break;
+    }
+  }
+
+  function win(){
+    stopTimer();
+    const elapsedTime = getElapsedTime();
+    
+    // Calcular estrelas
+    currentStars = StarSystem.calculate(steps, level.par, elapsedTime, usedUndo);
+    
+    // Salvar progresso
+    const save = SaveSystem.updateLevelScore(currentLevel, currentStars, steps, elapsedTime);
+    
+    // Achievements
+    if (currentLevel === 0 && !save.achievements.find(a => a.id === 'first_blood').earned) {
+      SaveSystem.unlockAchievement('first_blood');
+    }
+    
+    if (elapsedTime < 60) {
+      SaveSystem.unlockAchievement('speedrunner');
+    }
+    
+    if (!usedUndo) {
+      SaveSystem.unlockAchievement('undo_meister');
+    }
+    
+    // Verificar conquista de perfeccionista
+    const perfectLevels = save.scores.filter(score => score >= 3).length;
+    if (perfectLevels >= 3) {
+      SaveSystem.unlockAchievement('perfectionist');
+    }
+    
+    setTimeout(()=>{
+      alert(`🎉 Vitória!\n\nPassos: ${steps} (Par: ${level.par})\nTempo: ${Math.floor(elapsedTime)}s\nEstrelas: ${currentStars}/4\n\n${getWinMessage(currentStars)}`);
+      
+      // Próximo nível ou reiniciar
+      if (currentLevel < levels.length - 1) {
+        currentLevel++;
+        loadLevel(currentLevel);
+      } else {
+        resetLevel();
+      }
+    }, 500);
+    
+    SoundSystem.play('win');
+  }
+
+  function getWinMessage(stars) {
+    const messages = [
+      "Você conseguiu!",
+      "Bom trabalho!",
+      "Excelente!",
+      "Perfeito! 🏆"
+    ];
+    return messages[Math.min(stars - 1, 3)] || messages[0];
+  }
+
+  function gameOver(reason) {
+    stopTimer();
+    const messages = {
+      time: "⏰ Tempo esgotado!",
+      moves: "🚫 Movimentos esgotados!"
+    };
+    
+    setTimeout(() => {
+      alert(`${messages[reason]}\n\nTente novamente!`);
+      resetLevel();
+    }, 500);
+  }
+
+  // 🔽 SISTEMA DE NÍVEIS E MODOS 🔽
+  function resetLevel(){ loadLevel(currentLevel); }
+  
+  document.getElementById('btnReset').addEventListener('click', resetLevel);
+  document.getElementById('btnUndo').addEventListener('click', doUndo);
+
+  // Modos de jogo
+  document.querySelectorAll('.mode-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      gameMode = btn.dataset.mode;
+      loadLevel(currentLevel);
+    });
+  });
+
+  function loadLevel(idx){
+    currentLevel = idx;
+    const base = levels[idx];
+    level = JSON.parse(JSON.stringify(base));
+    tiles = level.tiles.map(r=>r.split(''));
+    snake = JSON.parse(JSON.stringify(level.snakeStart));
+    haveKey = false; 
+    steps = 0; 
+    undoStack = [];
+    usedUndo = false;
+    currentStars = 0;
+    
+    // Configurar modo de jogo
+    const modeConfig = CONFIG.modes[gameMode];
+    movesLeft = modeConfig.moveLimit || 0;
+    
+    // Resetar e iniciar timer
+    stopTimer();
+    timerEl.textContent = '00:00';
+    timerEl.style.color = '#e8ecf1';
+    
+    if (gameMode === 'timed') {
+      timerEl.textContent = `${Math.floor(modeConfig.timeLimit / 60)}:${(modeConfig.timeLimit % 60).toString().padStart(2, '0')}`;
+    }
+    
+    initBoard(); 
+    render(); 
+    updateHUD();
+    startTimer();
+    
+    const sel = document.getElementById('levelSelect');
+    if(sel && sel.value !== String(idx)) sel.value = String(idx);
+  }
+
+  function setupLevelSelect(){
+    const sel = document.getElementById('levelSelect'); 
+    if(!sel) return;
+    
+    sel.innerHTML='';
+    levels.forEach((lv,i)=>{
+      const opt=document.createElement('option'); 
+      opt.value=String(i); 
+      opt.textContent=lv.name||`Nível ${i+1}`; 
+      sel.appendChild(opt); 
+    });
+    sel.value = String(currentLevel);
+    sel.addEventListener('change', ()=>{
+      const idx=parseInt(sel.value,10)||0; 
+      loadLevel(idx); 
+    });
+  }
+
+  // 🔽 INICIALIZAÇÃO 🔽
+  setupLevelSelect();
+  loadLevel(0);
+  
+  // Carregar dados salvos
+  const saveData = SaveSystem.load();
+  updateHUD();
+  
+  console.log('🐍 Snake Puzzle Pro v6.1 - Botões melhorados e tutorial implementado!');
+  </script>
+</body>
+</html>

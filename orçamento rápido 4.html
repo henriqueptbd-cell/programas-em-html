@@ -1,0 +1,579 @@
+<!DOCTYPE html><html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>HC Marcenaria — Estimador Rápido (LM + Orçamento)</title>
+  <style>
+    :root{
+      --bg:#0b0c0f; --card:#101317; --muted:#9aa3af; --text:#eef2f7; --accent:#00dfa2; --border:#232a34; --danger:#ff5d5d;
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+    .wrap{max-width:420px;margin:0 auto;padding:18px}
+    h1{font-size:20px;margin:8px 0 12px;display:flex;align-items:center;gap:8px}
+    h2{font-size:16px;margin:18px 0 8px;color:var(--accent)}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:14px;margin:10px 0;box-shadow:0 10px 30px rgba(0,0,0,.2)}
+    label{display:block;font-size:12px;color:var(--muted);margin:8px 0 4px}
+    input,select{width:100%;padding:12px 12px;border-radius:12px;border:1px solid var(--border);background:#0e1115;color:var(--text);font-size:14px}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+    .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 14px;border-radius:12px;border:1px solid var(--border);background:#131820;color:var(--text);cursor:pointer;font-weight:600}
+    .btn.primary{background:var(--accent);color:#001b12;border-color:#00c893}
+    .btn.ghost{background:transparent}
+    .btn.danger{background:var(--danger);color:#1a0000;border-color:#ff3b3b}
+    .btn:active{transform:translateY(1px)}
+    .toolbar{display:flex;gap:8px;flex-wrap:wrap}
+    .muted{color:var(--muted);font-size:12px}
+    .small{font-size:12px}
+    .list{border:1px solid var(--border);border-radius:12px;overflow:hidden}
+    .list .item{display:flex;align-items:start;gap:8px;padding:10px;border-bottom:1px solid var(--border)}
+    .list .item:last-child{border-bottom:none}
+    .chip{display:inline-flex;align-items:center;gap:6px;padding:6px 8px;border:1px solid var(--border);border-radius:999px;background:#0e1115;font-size:12px}
+    textarea{width:100%;min-height:160px;padding:12px;border-radius:12px;border:1px solid var(--border);background:#0e1115;color:var(--text);resize:vertical}
+    .right{display:flex;justify-content:flex-end}
+    .mono{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>HC Marcenaria — Estimador Rápido</h1><div class="card" id="projeto">
+  <h2>Projeto</h2>
+  <div class="row">
+    <div>
+      <label>Cliente</label>
+      <input id="cliente" placeholder="Nome do cliente" />
+    </div>
+    <div>
+      <label>Data</label>
+      <input id="dataHoje" />
+    </div>
+  </div>
+  <div class="row">
+    <div>
+      <label>Responsável</label>
+      <input id="responsavel" placeholder="Henrique G. Camargo" />
+    </div>
+    <div>
+      <label>Puxador gola embutido?</label>
+      <select id="usaGola">
+        <option value="sim">Sim</option>
+        <option value="nao">Não</option>
+      </select>
+    </div>
+  </div>
+  <div class="toolbar" style="margin-top:10px">
+    <button class="btn" id="salvarProjeto" type="button">Salvar projeto (.json)</button>
+    <label class="btn ghost" for="abrirProjetoInput" style="cursor:pointer">Abrir projeto</label>
+    <input type="file" id="abrirProjetoInput" accept="application/json" style="display:none" />
+  </div>
+  <div class="muted" style="margin-top:8px">Dica: você pode salvar e reabrir seus projetos sem internet.</div>
+</div>
+
+<div class="card" id="config">
+  <h2>Configurações (Perdas & Padrões)</h2>
+  <div class="row3">
+    <div>
+      <label>Perda caixa 15mm</label>
+      <input id="perdaCaixa" type="number" step="0.01" value="0.12" />
+    </div>
+    <div>
+      <label>Perda portas 15/18mm</label>
+      <input id="perdaPorta" type="number" step="0.01" value="0.08" />
+    </div>
+    <div>
+      <label>Perda tampon 18mm</label>
+      <input id="perdaTampon" type="number" step="0.01" value="0.15" />
+    </div>
+  </div>
+  <div class="row">
+    <div>
+      <label>Perda fundo 6mm</label>
+      <input id="perdaFundo" type="number" step="0.01" value="0.05" />
+    </div>
+    <div>
+      <label>Altura útil padrão de gaveta (m)</label>
+      <input id="alturaGaveta" type="number" step="0.01" value="0.18" />
+    </div>
+  </div>
+  <div class="row">
+    <div>
+      <label>Área de 1 chapa (m²)</label>
+      <input id="areaChapa" type="number" step="0.0001" value="5.0875" />
+    </div>
+    <div>
+      <label>Fator fita portas</label>
+      <input id="fatorFitaPorta" type="number" step="0.01" value="0.6" />
+    </div>
+  </div>
+  <div class="muted">Ajuste estes coeficientes conforme sua realidade. Para gola embutida, o sistema reduz fita automaticamente.</div>
+</div>
+
+<div class="card" id="modulo">
+  <h2>Novo Módulo</h2>
+  <div class="row3">
+    <div>
+      <label>Tipo de Módulo</label>
+      <select id="tipo_mod">
+        <option value="generico" selected>Genérico</option>
+        <option value="gav4">Gaveteiro — 4 gavetas (padrão)</option>
+      </select>
+    </div>
+    <div>
+      <label>Largura L (mm)</label>
+      <input id="L" type="number" placeholder="ex: 600" />
+    </div>
+    <div>
+      <label>Altura H (mm)</label>
+      <input id="H" type="number" placeholder="ex: 700" />
+    </div>
+  </div>
+  <div class="row3">
+    <div>
+      <label>Profundidade P (mm)</label>
+      <input id="P" type="number" placeholder="ex: 450" />
+    </div>
+    <div>
+      <label>Prateleiras internas</label>
+      <input id="n_prat" type="number" value="0" />
+    </div>
+    <div>
+      <label>Tipo de porta</label>
+      <select id="tipo_porta">
+        <option value="0">Sem porta</option>
+        <option value="1">1 porta</option>
+        <option value="2">2 portas</option>
+      </select>
+    </div>
+    <div>
+      <label>Gavetas</label>
+      <input id="n_gav" type="number" value="0" />
+    </div>
+  </div>
+  <div class="row">
+    <div>
+      <label>Tamponamento</label>
+      <select id="tampon">
+        <option value="nenhum">Nenhum</option>
+        <option value="lateral_topo">Lateral + Topo</option>
+      </select>
+    </div>
+    <div>
+      <label>Observações (opcional)</label>
+      <input id="obs" placeholder="LED, basculante, etc." />
+    </div>
+  </div>
+  <div class="row">
+    <div>
+      <label>Cor caixa 15mm (A)</label>
+      <input id="corA" placeholder="ex: Branco TX" />
+    </div>
+    <div>
+      <label>Cor portas 15/18mm (B)</label>
+      <input id="corB" placeholder="ex: Branco Lacca" />
+    </div>
+  </div>
+  <div class="row">
+    <div>
+      <label>Cor tampon 18mm (C)</label>
+      <input id="corC" placeholder="ex: Itapuã Duratex" />
+    </div>
+    <div>
+      <label>Cor fundo 6mm (D)</label>
+      <input id="corD" placeholder="ex: Branco TX" />
+    </div>
+  </div>
+  <div class="toolbar" style="margin-top:10px">
+    <button class="btn primary" id="adicionar" type="button">Adicionar módulo</button>
+    <button class="btn ghost" id="limpar" type="button">Limpar</button>
+  </div>
+</div>
+
+<div class="card" id="listaModulos">
+  <h2>Módulos adicionados</h2>
+  <div id="modsVazio" class="muted">Nenhum módulo adicionado ainda.</div>
+  <div id="mods" class="list"></div>
+  <div class="right" style="margin-top:8px"><button class="btn danger" id="limparTudo" type="button">Remover todos</button></div>
+</div>
+
+<div class="card" id="totais">
+  <h2>Totais (Agrupado por Cor & Espessura)</h2>
+  <div id="totaisCorEsp" class="list"></div>
+  <div style="margin-top:10px" class="row">
+    <div>
+      <div class="chip">Fitas (m): <span id="fitaTotal" style="margin-left:6px" class="mono">0</span></div>
+    </div>
+    <div>
+      <div class="chip">Dobradiças: <span id="dobTotal" style="margin-left:6px" class="mono">0</span></div>
+    </div>
+  </div>
+  <div style="margin-top:10px" class="row">
+    <div>
+      <div class="chip">Corrediças (pares): <span id="corrediçasTotal" style="margin-left:6px" class="mono">0</span></div>
+    </div>
+    <div>
+      <div class="chip">Stays/pistões: <span id="staysTotal" style="margin-left:6px" class="mono">0</span></div>
+    </div>
+  </div>
+  <div class="toolbar" style="margin-top:12px">
+    <button class="btn" id="baixarCSV" type="button">Baixar CSV — Lista de Materiais</button>
+  </div>
+</div>
+
+<div class="card" id="whats">
+  <h2>WhatsApp (prévia)</h2>
+  <textarea id="waText" class="mono" spellcheck="false"></textarea>
+  <div class="toolbar" style="margin-top:8px">
+    <button class="btn primary" id="copiarWA" type="button">Copiar WhatsApp</button>
+  </div>
+  <div class="muted small" style="margin-top:6px">Formato compacto com negritos e divisórias. Edite o texto acima se quiser.</div>
+</div>
+
+<div class="muted small" style="text-align:center;margin:14px 0 30px">v1.0 — Modo Rápido (estimativo com perdas). Depois do aceite do cliente, detalhar peça a peça.</div>
+
+  </div><script>
+(function(){
+  const el = id => document.getElementById(id);
+  const todayStr = () => {
+    const d = new Date();
+    const dd = String(d.getDate()).padStart(2,'0');
+    const mm = String(d.getMonth()+1).padStart(2,'0');
+    const yyyy = d.getFullYear();
+    return `${dd}/${mm}/${yyyy}`;
+  };
+
+  // Estado
+  let MODS = [];
+
+  // Init
+  el('dataHoje').value = todayStr();
+  render();
+
+  // Eventos básicos
+  el('adicionar').onclick = () => {
+    const toMeters = (vmm) => {
+      const v = String(vmm||'').trim().replace(',', '.');
+      const n = parseFloat(v);
+      return isFinite(n) ? n/1000 : NaN;
+    };
+    const toInt = (v) => {
+      const n = parseInt(String(v||'').trim(),10);
+      return isFinite(n) ? n : 0;
+    };
+    const tipo_mod = (el('tipo_mod').value||'generico');
+    const L = toMeters(el('L').value);
+    const H = toMeters(el('H').value);
+    let P = toMeters(el('P').value);
+    if(tipo_mod==='gav4'){ P = 0.45; } // profundidade padrão 450mm
+    const n_prat = toInt(el('n_prat').value);
+    const tipo_porta = toInt(el('tipo_porta').value);
+    let n_gav = toInt(el('n_gav').value);
+    if(tipo_mod==='gav4') n_gav = 4;
+    const tampon = el('tampon').value || 'nenhum';
+    const obs = (el('obs').value||'').trim();
+    const corA = (el('corA').value||'Branco TX').trim();
+    const corB = (el('corB').value||'Branco Lacca').trim();
+    const corC = (el('corC').value||'Itapuã Duratex').trim();
+    const corD = (el('corD').value||'Branco TX').trim();
+
+    if(!(L>0 && H>0 && P>0)) { alert('Preencha L, H, P (mm) corretamente. Ex.: 800, 700, 500'); return; }
+
+    MODS.push({tipo_mod,L,H,P,n_prat,tipo_porta,n_gav,tampon,obs,corA,corB,corC,corD});
+    clearForm();
+    render();
+  };
+
+  el('limpar').onclick = clearForm;
+  el('limparTudo').onclick = () => { if(confirm('Remover todos os módulos?')) { MODS = []; render(); }};
+
+  // Salvar/Abrir projeto
+  el('salvarProjeto').onclick = () => {
+    const data = getSnapshot();
+    const blob = new Blob([JSON.stringify(data,null,2)], {type:'application/json'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `HC_Projeto_${Date.now()}.json`;
+    a.click();
+  };
+  el('abrirProjetoInput').addEventListener('change', async (e)=>{
+    const file = e.target.files?.[0];
+    if(!file) return;
+    const txt = await file.text();
+    try{
+      const data = JSON.parse(txt);
+      applySnapshot(data);
+    }catch(err){ alert('Arquivo inválido.'); }
+  });
+
+  // CSV
+  el('baixarCSV').onclick = () => {
+    const csv = buildCSV();
+    const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'HC_ListaMateriais.csv';
+    a.click();
+  };
+
+  // WhatsApp
+  el('copiarWA').onclick = async () => {
+    const txt = el('waText').value;
+    try{ await navigator.clipboard.writeText(txt); alert('Texto copiado!'); } catch(e){
+      el('waText').select(); document.execCommand('copy'); alert('Copiado.');
+    }
+  };
+
+  // Helpers
+  function clearForm(){
+    ['L','H','P','n_prat','tipo_porta','n_gav','tampon','obs','corA','corB','corC','corD'].forEach(k=>{
+      if(['tipo_porta','tampon'].includes(k)) return;
+      el(k).value = '';
+    });
+    el('n_prat').value = 0; el('n_gav').value = 0; el('tipo_porta').value = '0'; el('tampon').value = 'nenhum';
+  }
+
+  function getSnapshot(){
+    return {
+      meta: {
+        cliente: el('cliente').value||'',
+        data: el('dataHoje').value||todayStr(),
+        responsavel: el('responsavel').value||'',
+        usaGola: el('usaGola').value,
+      },
+      config: {
+        perdaCaixa: num(el('perdaCaixa').value,0.12),
+        perdaPorta: num(el('perdaPorta').value,0.08),
+        perdaTampon: num(el('perdaTampon').value,0.15),
+        perdaFundo: num(el('perdaFundo').value,0.05),
+        alturaGaveta: num(el('alturaGaveta').value,0.18),
+        areaChapa: num(el('areaChapa').value,5.0875),
+        fatorFitaPorta: num(el('fatorFitaPorta').value,0.6),
+      },
+      mods: MODS
+    };
+  }
+  function applySnapshot(data){
+    el('cliente').value = data?.meta?.cliente || '';
+    el('dataHoje').value = data?.meta?.data || todayStr();
+    el('responsavel').value = data?.meta?.responsavel || '';
+    el('usaGola').value = data?.meta?.usaGola === 'nao' ? 'nao' : 'sim';
+
+    el('perdaCaixa').value = data?.config?.perdaCaixa ?? 0.12;
+    el('perdaPorta').value = data?.config?.perdaPorta ?? 0.08;
+    el('perdaTampon').value = data?.config?.perdaTampon ?? 0.15;
+    el('perdaFundo').value = data?.config?.perdaFundo ?? 0.05;
+    el('alturaGaveta').value = data?.config?.alturaGaveta ?? 0.18;
+    el('areaChapa').value = data?.config?.areaChapa ?? 5.0875;
+    el('fatorFitaPorta').value = data?.config?.fatorFitaPorta ?? 0.6;
+
+    MODS = Array.isArray(data?.mods) ? data.mods : [];
+    render();
+  }
+  function num(v,def=0){ const x=parseFloat(v); return isFinite(x)?x:def; }
+
+  function render(){
+    // Lista de módulos
+    const cont = el('mods');
+    cont.innerHTML = '';
+    if(MODS.length===0){ el('modsVazio').style.display='block'; }
+    else {
+      el('modsVazio').style.display='none';
+      MODS.forEach((m,i)=>{
+        const div = document.createElement('div');
+        div.className='item';
+        const labelTipo = (m.tipo_mod==='gav4')? 'Gaveteiro 4 gavetas' : 'Genérico';
+        const portasTxt = m.tipo_porta===2? '2 portas' : (m.tipo_porta===1? '1 porta' : 'sem porta');
+        let extra = '';
+        if(m.tipo_mod==='gav4'){
+          const Lmm = mm(m.L); const Hmm = mm(m.H); const Dw = Math.round((Lmm - 30) - 27); // largura gaveta
+          const fundoW = Math.max(50, Dw - 30);
+          const fundoH = 413;
+          extra = `<div class="small">Padrão 4 gavetas → L_vão: ${Lmm-30} mm | L_gav: <span class="mono">${Dw}</span> mm | Laterais (8x) <span class="mono">${Dw}×130</span> | Contra-frentes (4x) <span class="mono">${Dw}×110</span> | Fundos (4x) <span class="mono">${fundoW}×${fundoH}</span> (15mm)</div>`;
+        }
+        div.innerHTML = `
+          <div style="flex:1">
+            <div><strong>M${i+1}</strong> — ${labelTipo} — ${mm(m.L)}×${mm(m.H)}×${mm(m.P)} mm • Prat: ${m.n_prat} • ${portasTxt} • Gav: ${m.n_gav} • Tampon: ${m.tampon.replace('_',' / ')} ${m.obs?('• '+escapeHtml(m.obs)):' '}</div>
+            <div class="muted small">A:${escapeHtml(m.corA)} | B:${escapeHtml(m.corB)} | C:${escapeHtml(m.corC)} | D:${escapeHtml(m.corD)}</div>
+            ${extra}
+          </div>
+          <button class="btn danger small" data-i="${i}" type="button">Excluir</button>
+        `;
+        cont.appendChild(div);
+      });
+      // excluir handlers
+      cont.querySelectorAll('button').forEach(btn=>{
+        btn.onclick = ()=>{ const i=parseInt(btn.dataset.i,10); MODS.splice(i,1); render(); };
+      });
+    }
+
+    // Totais
+    const snap = getSnapshot();
+    const r = calcularTotais(snap);
+    desenharTotais(r, snap.config.areaChapa);
+    el('waText').value = montarWhatsApp(r, snap);
+  }
+
+  function mm(xm){ return Math.round(xm*1000); }
+
+  function calcularTotais(snap){
+    const grupos = new Map();
+    let fitaTotal = 0; let dobradiças=0; let corrediças=0; let stays=0;
+
+    const gola = snap.meta.usaGola === 'sim';
+    const fFitaPortaBase = snap.config.fatorFitaPorta || 0.6;
+    const fFitaPorta = gola ? Math.max(0, fFitaPortaBase - 0.1) : fFitaPortaBase;
+
+    for(const m of snap.mods){
+      const tipo_mod = m.tipo_mod || 'generico';
+      const {L,H,P,n_prat,tipo_porta,n_gav,tampon,corA,corB,corC,corD} = m;
+      const {perdaCaixa,perdaPorta,perdaTampon,perdaFundo,alturaGaveta} = snap.config;
+
+      const A_caixa = (2*H*P + 2*L*P + n_prat*L*P) * (1 + perdaCaixa);
+      const A_portas = (tipo_porta>0 ? (H*L) * (1 + perdaPorta) : 0);
+      let A_gav15 = 0; let A_gav6 = 0;
+      if(tipo_mod==='gav4'){
+        // Cálculo preciso do padrão 4 gavetas (tudo em MDF 15mm, inclusive o fundo conforme especificado)
+        const Lmm = Math.round(L*1000);
+        const Dw = ((Lmm - 30) - 27)/1000; // largura gaveta em m
+        const hLat = 130/1000; // 0.13 m
+        const hCF  = 110/1000; // 0.11 m
+        const fundoW = (Math.max(50, Math.round((Dw*1000) - 30)))/1000; // (Dw - 30mm)
+        const fundoH = 413/1000; // 0.413 m
+        // Laterais (8x) 15mm
+        const areaLaterais = 8 * (Dw * hLat);
+        // Contra-frentes (4x) 15mm
+        const areaCF = 4 * (Dw * hCF);
+        // Fundos (4x) 15mm (sim, padrão especificado em 15mm)
+        const areaFundos15 = 4 * (fundoW * fundoH);
+        A_gav15 = (areaLaterais + areaCF + areaFundos15) * (1 + perdaCaixa);
+        A_gav6 = 0;
+      } else {
+        const A_gav15_u = alturaGaveta * (2*P + (L - 0.03));
+        const A_gav6_u  = (L - 0.03) * (P - 0.03);
+        A_gav15 = (n_gav>0 ? n_gav * A_gav15_u * (1+perdaCaixa) : 0);
+        A_gav6  = (n_gav>0 ? n_gav * A_gav6_u  * (1+perdaFundo) : 0);
+      }
+      const A_tampon = (tampon==='lateral_topo') ? ( (2*H*(P+0.02) + L*(P+0.02)) * (1+perdaTampon) ) : 0;
+      const A_fundo = (H*L) * (1+perdaFundo);
+
+      // Caixa 15mm (genérica)
+      addGrupo('15', corA, A_caixa);
+      // Gavetas 15mm: no padrão gav4, são internas → tratar como branco TX por padrão (interno)
+      addGrupo('15', (tipo_mod==='gav4' ? 'Branco TX' : corA), A_gav15);
+      addGrupo('15/18 portas', corB, A_portas);
+      addGrupo('18', corC, A_tampon);
+      addGrupo('6', corD, A_fundo + A_gav6);
+
+      const nFolhas = (tipo_porta===2?2:(tipo_porta===1?1:0));
+      const per_porta = (2*H + 2*L) * fFitaPorta;
+      fitaTotal += nFolhas * per_porta;
+      fitaTotal += n_prat * L * 1.05; // prateleiras aparentes
+      fitaTotal += L * 1.05; // frente da caixa
+      fitaTotal += (n_gav>0 ? L * n_gav * fFitaPorta : 0);
+      if(tipo_mod==='gav4'){
+        // Fitas da gaveta: laterais (frente) e contra-frentes (todas as bordas)
+        const Dw = ((Math.round(L*1000) - 30) - 27)/1000; // largura gaveta em m
+        // Laterais: 8x, fita apenas na frente → comprimento ≈ largura da peça (Dw)
+        fitaTotal += 8 * Dw;
+        // Contra-frentes: 4x, fita 4 lados → perímetro 2*(Dw + 0.11)
+        fitaTotal += 4 * (2 * (Dw + 0.11));
+      }
+
+      if(nFolhas>0){
+        const dobrPorFolha = H <= 0.9 ? 2 : (H <= 1.5 ? 3 : 4);
+        dobradiças += dobrPorFolha * nFolhas;
+      }
+      corrediças += n_gav;
+    }
+
+    function addGrupo(esp, cor, area){
+      if(area<=0) return;
+      const key = `${esp}|${cor}`;
+      const g = grupos.get(key) || {esp, cor, area:0};
+      g.area += area;
+      grupos.set(key, g);
+    }
+
+    return {grupos:[...grupos.values()], fitaTotal, dobradiças, corrediças, stays};
+  }
+
+  function desenharTotais(r, areaChapa){
+    const box = el('totaisCorEsp');
+    box.innerHTML = '';
+    if(r.grupos.length===0){ box.innerHTML = '<div class="item muted">Sem dados ainda.</div>'; return; }
+    r.grupos.sort((a,b)=> (a.esp+b.cor).localeCompare(b.esp+a.cor));
+    r.grupos.forEach(g=>{
+      const chapas = Math.ceil(g.area / areaChapa);
+      const item = document.createElement('div');
+      item.className='item';
+      item.innerHTML = `
+        <div style="flex:1">
+          <div><strong>${escapeHtml(g.cor)}</strong> • <span class="chip">${escapeHtml(g.esp)} mm</span></div>
+          <div class="muted small">Área: <span class="mono">${g.area.toFixed(3)} m²</span> • Chapa 2,75×1,85: <strong class="mono">${chapas}</strong></div>
+        </div>
+      `;
+      box.appendChild(item);
+    });
+    el('fitaTotal').textContent = r.fitaTotal.toFixed(2);
+    el('dobTotal').textContent = r.dobradiças;
+    el('corrediçasTotal').textContent = r.corrediças;
+    el('staysTotal').textContent = r.stays;
+  }
+
+  function montarWhatsApp(r, snap){
+    const {cliente, data} = {cliente: el('cliente').value||'Cliente', data: el('dataHoje').value||todayStr()};
+    const head = `*HC Marcenaria – Móveis Planejados Sob Medida*\n📅 *Data:* ${data}\n👤 *Cliente:* ${cliente}\n—`;
+    const mods = snap.mods.map((m,i)=>{
+      const tipo = (m.tipo_mod==='gav4')? 'Gaveteiro 4 gavetas' : 'Genérico';
+      const linha1 = `*M${i+1}* — ${tipo} — ${mm(m.L)}×${mm(m.H)}×${mm(m.P)} mm | Prat ${m.n_prat} | Porta ${m.tipo_porta} | Gav ${m.n_gav} | Tampon ${m.tampon.replace('_','/')}`;
+      const linha2 = `A:${m.corA} | B:${m.corB} | C:${m.corC} | D:${m.corD}`;
+      let extra = '';
+      if(m.tipo_mod==='gav4'){
+        const Lmm = mm(m.L); const Dw = Math.round((Lmm - 30) - 27);
+        const fundoW = Math.max(50, Dw - 30); const fundoH = 413;
+        extra = `
+Peças gaveta (4x):
+• Laterais (8x) 15mm: ${Dw} × 130 mm (fita frontal)
+• Contra-frentes (4x) 15mm: ${Dw} × 110 mm (fita 4 lados)
+• Fundos (4x) 15mm: ${fundoW} × ${fundoH} mm (sem fita)`;
+      }
+      return `${linha1}
+${linha2}${m.obs?`
+Obs: ${m.obs}`:''}${extra}`;
+    }).join('\n\n');
+
+    const grupos = r.grupos.map(g=>{
+      const chapas = Math.ceil(g.area / snap.config.areaChapa);
+      return `• ${g.cor} — *${g.esp}mm*: ${g.area.toFixed(3)} m² → *${chapas} chapas*`;
+    }).join('\n');
+
+    const ferr = `• Fitas (m): *${r.fitaTotal.toFixed(2)}*\n• Dobradiças: *${r.dobradiças}*\n• Corrediças (pares): *${r.corrediças}*` + (r.stays?`\n• Stays/pistões: *${r.stays}*`: '');
+
+    const rodape = `—\n*Modo Rápido (estimativo com perdas).* Após aceite, detalhamos peça a peça para produção.`;
+
+    return `${head}\n\n📦 *Módulos*\n${mods||'—'}\n\n📐 *Materiais (por cor/espessura)*\n${grupos||'—'}\n\n🧰 *Ferragens (estimativo)*\n${ferr}\n\n${rodape}`;
+  }
+
+  function buildCSV(){
+    const snap = getSnapshot();
+    const r = calcularTotais(snap);
+    const lines = [];
+    lines.push(['Grupo','Espessura','Cor','Área (m²)','Chapas (2.75x1.85)'].join(';'));
+    r.grupos.forEach(g=>{
+      const chapas = Math.ceil(g.area / snap.config.areaChapa);
+      lines.push([`${g.esp}mm`, g.esp, g.cor, g.area.toFixed(3), chapas].join(';'));
+    });
+    lines.push('');
+    lines.push(['Ferragens','','','',''].join(';'));
+    lines.push(['Fitas (m)', r.fitaTotal.toFixed(2)].join(';'));
+    lines.push(['Dobradiças', r.dobradiças].join(';'));
+    lines.push(['Corrediças (pares)', r.corrediças].join(';'));
+    if(r.stays) lines.push(['Stays/pistões', r.stays].join(';'));
+    return lines.join('\n');
+  }
+
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[m]));
+  }
+})();
+</script></body>
+</html>

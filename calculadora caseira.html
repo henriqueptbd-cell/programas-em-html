@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+
+<html lang="pt-BR">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Calculadora Inteligente</title>
+
+    <style>
+
+        * {
+
+            box-sizing: border-box;
+
+            margin: 0;
+
+            padding: 0;
+
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+
+        }
+
+        
+
+        body {
+
+            display: flex;
+
+            justify-content: center;
+
+            align-items: center;
+
+            min-height: 100vh;
+
+            background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+
+            padding: 20px;
+
+        }
+
+        
+
+        .calculator {
+
+            width: 100%;
+
+            max-width: 400px;
+
+            background-color: #1e1e2e;
+
+            border-radius: 20px;
+
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+
+            overflow: hidden;
+
+        }
+
+        
+
+        .display {
+
+            padding: 20px;
+
+            background-color: #2d2d44;
+
+            text-align: right;
+
+            border-bottom: 1px solid #3a3a52;
+
+        }
+
+        
+
+        .expression {
+
+            font-size: 1.2rem;
+
+            color: #a9a9b3;
+
+            min-height: 27px;
+
+            word-wrap: break-word;
+
+        }
+
+        
+
+        .result {
+
+            font-size: 2.5rem;
+
+            font-weight: bold;
+
+            color: #ffffff;
+
+            margin-top: 10px;
+
+            min-height: 50px;
+
+            word-wrap: break-word;
+
+        }
+
+        
+
+        .keypad {
+
+            display: grid;
+
+            grid-template-columns: repeat(4, 1fr);
+
+            gap: 1px;
+
+            background-color: #3a3a52;
+
+        }
+
+        
+
+        button {
+
+            border: none;
+
+            padding: 20px 10px;
+
+            font-size: 1.2rem;
+
+            background-color: #2d2d44;
+
+            color: #ffffff;
+
+            cursor: pointer;
+
+            transition: background-color 0.2s;
+
+        }
+
+        
+
+        button:hover {
+
+            background-color: #3a3a52;
+
+        }
+
+        
+
+        button:active {
+
+            background-color: #4a4a62;
+
+        }
+
+        
+
+        .operator {
+
+            background-color: #ff9500;
+
+            color: #ffffff;
+
+        }
+
+        
+
+        .operator:hover {
+
+            background-color: #ffaa33;
+
+        }
+
+        
+
+        .operator:active {
+
+            background-color: #e68500;
+
+        }
+
+        
+
+        .equals {
+
+            background-color: #ff9500;
+
+            color: #ffffff;
+
+            grid-column: span 2;
+
+        }
+
+        
+
+        .clear {
+
+            background-color: #a9a9b3;
+
+            color: #1e1e2e;
+
+        }
+
+        
+
+        .clear:hover {
+
+            background-color: #c0c0cc;
+
+        }
+
+        
+
+        .clear:active {
+
+            background-color: #8f8f9e;
+
+        }
+
+        
+
+        .zero {
+
+            grid-column: span 2;
+
+        }
+
+        
+
+        .history {
+
+            margin-top: 20px;
+
+            padding: 15px;
+
+            background-color: #2d2d44;
+
+            border-radius: 10px;
+
+            max-height: 150px;
+
+            overflow-y: auto;
+
+        }
+
+        
+
+        .history h3 {
+
+            color: #ffffff;
+
+            margin-bottom: 10px;
+
+            font-size: 1rem;
+
+        }
+
+        
+
+        .history-item {
+
+            color: #a9a9b3;
+
+            font-size: 0.9rem;
+
+            padding: 5px 0;
+
+            border-bottom: 1px solid #3a3a52;
+
+        }
+
+        
+
+        @media (max-width: 480px) {
+
+            .calculator {
+
+                max-width: 100%;
+
+            }
+
+            
+
+            button {
+
+                padding: 15px 5px;
+
+                font-size: 1rem;
+
+            }
+
+            
+
+            .result {
+
+                font-size: 2rem;
+
+            }
+
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+    <div class="calculator">
+
+        <div class="display">
+
+            <div class="expression" id="expression"></div>
+
+            <div class="result" id="result">0</div>
+
+        </div>
+
+        
+
+        <div class="keypad">
+
+            <button class="clear" onclick="clearAll()">C</button>
+
+            <button class="clear" onclick="clearLast()">CE</button>
+
+            <button onclick="appendToExpression('(')">(</button>
+
+            <button onclick="appendToExpression(')')">)</button>
+
+            
+
+            <button onclick="appendToExpression('7')">7</button>
+
+            <button onclick="appendToExpression('8')">8</button>
+
+            <button onclick="appendToExpression('9')">9</button>
+
+            <button class="operator" onclick="appendToExpression('/')">÷</button>
+
+            
+
+            <button onclick="appendToExpression('4')">4</button>
+
+            <button onclick="appendToExpression('5')">5</button>
+
+            <button onclick="appendToExpression('6')">6</button>
+
+            <button class="operator" onclick="appendToExpression('*')">×</button>
+
+            
+
+            <button onclick="appendToExpression('1')">1</button>
+
+            <button onclick="appendToExpression('2')">2</button>
+
+            <button onclick="appendToExpression('3')">3</button>
+
+            <button class="operator" onclick="appendToExpression('-')">-</button>
+
+            
+
+            <button class="zero" onclick="appendToExpression('0')">0</button>
+
+            <button onclick="appendToExpression('.')">.</button>
+
+            <button class="operator" onclick="appendToExpression('+')">+</button>
+
+            <button class="equals" onclick="calculate()">=</button>
+
+        </div>
+
+        
+
+        <div class="history">
+
+            <h3>Histórico</h3>
+
+            <div id="history-list"></div>
+
+        </div>
+
+    </div>
+
+    <script>
+
+        let expression = '';
+
+        let history = [];
+
+        
+
+        // Atualiza a exibição da expressão
+
+        function updateDisplay() {
+
+            document.getElementById('expression').textContent = expression || '0';
+
+        }
+
+        
+
+        // Adiciona um caractere à expressão
+
+        function appendToExpression(char) {
+
+            // Verifica se o caractere é um operador
+
+            const isOperator = ['+', '-', '*', '/'].includes(char);
+
+            const lastChar = expression.slice(-1);
+
+            const isLastCharOperator = ['+', '-', '*', '/'].includes(lastChar);
+
+            
+
+            // Evita dois operadores consecutivos
+
+            if (isOperator && isLastCharOperator) {
+
+                // Substitui o último operador pelo novo
+
+                expression = expression.slice(0, -1) + char;
+
+            } else {
+
+                expression += char;
+
+            }
+
+            
+
+            updateDisplay();
+
+        }
+
+        
+
+        // Limpa toda a expressão
+
+        function clearAll() {
+
+            expression = '';
+
+            document.getElementById('result').textContent = '0';
+
+            updateDisplay();
+
+        }
+
+        
+
+        // Limpa o último caractere
+
+        function clearLast() {
+
+            expression = expression.slice(0, -1);
+
+            updateDisplay();
+
+        }
+
+        
+
+        // Adiciona um item ao histórico
+
+        function addToHistory(expr, result) {
+
+            history.unshift({ expr, result });
+
+            if (history.length > 5) {
+
+                history.pop();
+
+            }
+
+            
+
+            const historyList = document.getElementById('history-list');
+
+            historyList.innerHTML = '';
+
+            
+
+            history.forEach(item => {
+
+                const historyItem = document.createElement('div');
+
+                historyItem.className = 'history-item';
+
+                historyItem.textContent = `${item.expr} = ${item.result}`;
+
+                historyList.appendChild(historyItem);
+
+            });
+
+        }
+
+        
+
+        // Avalia a expressão matemática
+
+        function evaluateExpression(expr) {
+
+            try {
+
+                // Substitui operadores para formato JavaScript
+
+                expr = expr.replace(/×/g, '*').replace(/÷/g, '/');
+
+                
+
+                // Usa Function para evitar eval direto (mais seguro)
+
+                const result = Function(`"use strict"; return (${expr})`)();
+
+                
+
+                // Verifica se o resultado é um número válido
+
+                if (isNaN(result) || !isFinite(result)) {
+
+                    throw new Error('Resultado inválido');
+
+                }
+
+                
+
+                return result;
+
+            } catch (error) {
+
+                throw new Error('Expressão inválida');
+
+            }
+
+        }
+
+        
+
+        // Calcula o resultado da expressão
+
+        function calculate() {
+
+            if (!expression) return;
+
+            
+
+            try {
+
+                const result = evaluateExpression(expression);
+
+                document.getElementById('result').textContent = result;
+
+                addToHistory(expression, result);
+
+                expression = result.toString();
+
+                updateDisplay();
+
+            } catch (error) {
+
+                document.getElementById('result').textContent = 'Erro';
+
+            }
+
+        }
+
+        
+
+        // Permite entrada via teclado
+
+        document.addEventListener('keydown', function(event) {
+
+            const key = event.key;
+
+            
+
+            // Números
+
+            if (key >= '0' && key <= '9') {
+
+                appendToExpression(key);
+
+            }
+
+            // Operadores
+
+            else if (['+', '-', '*', '/'].includes(key)) {
+
+                appendToExpression(key);
+
+            }
+
+            // Parênteses
+
+            else if (key === '(' || key === ')') {
+
+                appendToExpression(key);
+
+            }
+
+            // Ponto decimal
+
+            else if (key === '.') {
+
+                appendToExpression(key);
+
+            }
+
+            // Enter ou igual para calcular
+
+            else if (key === 'Enter' || key === '=') {
+
+                event.preventDefault();
+
+                calculate();
+
+            }
+
+            // Backspace para apagar
+
+            else if (key === 'Backspace') {
+
+                event.preventDefault();
+
+                clearLast();
+
+            }
+
+            // Escape para limpar tudo
+
+            else if (key === 'Escape') {
+
+                clearAll();
+
+            }
+
+        });
+
+        
+
+        // Inicializa a exibição
+
+        updateDisplay();
+
+    </script>
+
+</body>
+
+</html>

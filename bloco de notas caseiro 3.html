@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bloco de Notas HTML</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/dracula.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/htmlmixed/htmlmixed.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/xml/xml.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/css/css.min.js"></script>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d);
+      color: #333;
+      line-height: 1.6;
+      padding: 20px;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 15px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+      overflow: hidden;
+    }
+
+    header {
+      background: linear-gradient(135deg, #2c3e50, #34495e);
+      color: white;
+      padding: 20px;
+      text-align: center;
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      margin-bottom: 10px;
+      font-weight: 700;
+    }
+
+    .subtitle {
+      font-size: 1.2rem;
+      opacity: 0.9;
+    }
+
+    .botoes {
+      display: flex;
+      gap: 15px;
+      padding: 20px;
+      background: #f8f9fa;
+      border-bottom: 1px solid #dee2e6;
+      flex-wrap: wrap;
+    }
+
+    .botoes button {
+      padding: 12px 25px;
+      font-size: 16px;
+      cursor: pointer;
+      border: none;
+      border-radius: 8px;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 600;
+    }
+
+    .botoes button:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+    }
+
+    .botoes button:active {
+      transform: translateY(0);
+    }
+
+    #salvar {
+      background: linear-gradient(135deg, #28a745, #20c997);
+      color: white;
+    }
+
+    #limpar {
+      background: linear-gradient(135deg, #ffc107, #fd7e14);
+      color: white;
+    }
+
+    #visualizar {
+      background: linear-gradient(135deg, #17a2b8, #6f42c1);
+      color: white;
+    }
+
+    #baixar {
+      background: linear-gradient(135deg, #007bff, #6610f2);
+      color: white;
+    }
+
+    .editor-container {
+      padding: 0 20px 20px 20px;
+      height: 70vh;
+    }
+
+    .CodeMirror {
+      height: 100%;
+      font-size: 16px;
+      border-radius: 8px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    .status-bar {
+      background: #e9ecef;
+      padding: 10px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 14px;
+      color: #6c757d;
+      border-top: 1px solid #dee2e6;
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .modal-content {
+      background: white;
+      padding: 0;
+      border-radius: 10px;
+      width: 90%;
+      height: 90%;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    }
+
+    .modal-header {
+      padding: 15px 20px;
+      background: #2c3e50;
+      color: white;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-top-left-radius: 10px;
+      border-top-right-radius: 10px;
+    }
+
+    .modal-header h2 {
+      margin: 0;
+      font-size: 1.5rem;
+    }
+
+    .close-btn {
+      background: none;
+      border: none;
+      color: white;
+      font-size: 24px;
+      cursor: pointer;
+      padding: 5px;
+    }
+
+    .close-btn:hover {
+      color: #ff4757;
+    }
+
+    .modal-body {
+      flex: 1;
+      padding: 0;
+      overflow: hidden;
+    }
+
+    #preview-frame {
+      width: 100%;
+      height: 100%;
+      border: none;
+      border-bottom-left-radius: 10px;
+      border-bottom-right-radius: 10px;
+    }
+
+    @media (max-width: 768px) {
+      .botoes {
+        flex-direction: column;
+        gap: 10px;
+      }
+      
+      .botoes button {
+        width: 100%;
+      }
+      
+      .editor-container {
+        height: 60vh;
+        padding: 0 10px 10px 10px;
+      }
+      
+      h1 {
+        font-size: 2rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Bloco de Notas HTML</h1>
+      <p class="subtitle">Crie e edite arquivos HTML com facilidade</p>
+    </header>
+
+    <div class="botoes">
+      <button id="salvar" onclick="salvarLocal()">
+        <span>💾</span> Salvar Local
+      </button>
+      <button id="baixar" onclick="baixarArquivo()">
+        <span>📥</span> Baixar HTML
+      </button>
+      <button id="limpar" onclick="limpar()">
+        <span>🗑️</span> Limpar
+      </button>
+      <button id="visualizar" onclick="visualizar()">
+        <span>👁️</span> Visualizar
+      </button>
+    </div>
+
+    <div class="editor-container">
+      <textarea id="editor"></textarea>
+    </div>
+
+    <div class="status-bar">
+      <span id="status">Digite seu código HTML...</span>
+      <span id="contador">0 caracteres</span>
+    </div>
+  </div>
+
+  <div class="modal" id="preview-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Visualização do HTML</h2>
+        <button class="close-btn" onclick="fecharVisualizacao()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <iframe id="preview-frame"></iframe>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Inicializar o editor CodeMirror
+    var editor = CodeMirror.fromTextArea(document.getElementById("editor"), {
+      mode: "htmlmixed",
+      lineNumbers: true,
+      theme: "dracula",
+      lineWrapping: true,
+      autoCloseTags: true,
+      matchBrackets: true,
+      autoCloseBrackets: true
+    });
+
+    // Atualizar o status e contador de caracteres
+    editor.on("change", function() {
+      const content = editor.getValue();
+      document.getElementById("contador").textContent = content.length + " caracteres";
+      
+      if (content.length > 0) {
+        document.getElementById("status").textContent = "Editando...";
+      } else {
+        document.getElementById("status").textContent = "Digite seu código HTML...";
+      }
+    });
+
+    // Função para salvar no localStorage
+    function salvarLocal() {
+      localStorage.setItem("blocoNotasHTML", editor.getValue());
+      document.getElementById("status").textContent = "Salvo localmente!";
+      setTimeout(() => {
+        if (editor.getValue().length > 0) {
+          document.getElementById("status").textContent = "Editando...";
+        } else {
+          document.getElementById("status").textContent = "Digite seu código HTML...";
+        }
+      }, 2000);
+    }
+
+    // Função para baixar o arquivo HTML
+    function baixarArquivo() {
+      const content = editor.getValue();
+      if (!content.trim()) {
+        alert("Editor vazio! Digite algum conteúdo HTML para baixar.");
+        return;
+      }
+
+      const nomeArquivo = prompt("Digite o nome do arquivo:", "pagina.html") || "pagina.html";
+      const blob = new Blob([content], { type: "text/html" });
+      const url = URL.createObjectURL(blob);
+      
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = nomeArquivo.endsWith(".html") ? nomeArquivo : nomeArquivo + ".html";
+      document.body.appendChild(a);
+      a.click();
+      
+      // Limpar
+      setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }, 100);
+      
+      document.getElementById("status").textContent = "Arquivo baixado: " + a.download;
+    }
+
+    // Função para limpar o editor
+    function limpar() {
+      if (confirm("Tem certeza que deseja limpar o editor? Todo o conteúdo será perdido.")) {
+        editor.setValue("");
+        document.getElementById("status").textContent = "Editor limpo!";
+      }
+    }
+
+    // Função para visualizar o HTML
+    function visualizar() {
+      const content = editor.getValue();
+      if (!content.trim()) {
+        alert("Editor vazio! Digite algum conteúdo HTML para visualizar.");
+        return;
+      }
+
+      const previewFrame = document.getElementById("preview-frame");
+      const previewModal = document.getElementById("preview-modal");
+      
+      const previewDoc = previewFrame.contentDocument || previewFrame.contentWindow.document;
+      previewDoc.open();
+      previewDoc.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Visualização</title>
+          <style>
+            body { 
+              font-family: Arial, sans-serif; 
+              padding: 20px;
+              line-height: 1.6;
+              background: #f8f9fa;
+            }
+          </style>
+        </head>
+        <body>${content}</body>
+        </html>
+      `);
+      previewDoc.close();
+      
+      previewModal.style.display = "flex";
+    }
+
+    // Função para fechar a visualização
+    function fecharVisualizacao() {
+      document.getElementById("preview-modal").style.display = "none";
+    }
+
+    // Fechar modal pressionando ESC
+    document.addEventListener("keydown", function(e) {
+      if (e.key === "Escape") {
+        fecharVisualizacao();
+      }
+    });
+
+    // Carregar conteúdo salvo ao iniciar
+    window.onload = function() {
+      const conteudo = localStorage.getItem("blocoNotasHTML");
+      if (conteudo) {
+        editor.setValue(conteudo);
+        document.getElementById("status").textContent = "Conteúdo anterior carregado!";
+      }
+      
+      // Ajustar altura do editor
+      setTimeout(() => {
+        editor.refresh();
+      }, 100);
+    };
+
+    // Ajustar o editor quando a janela for redimensionada
+    window.addEventListener("resize", function() {
+      editor.refresh();
+    });
+  </script>
+</body>
+</html>
